@@ -1,2 +1,1 @@
-Student Management System
-Login Module Added
+Newly added student
