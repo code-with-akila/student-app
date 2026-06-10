@@ -1,0 +1,794 @@
+* Vault Policies - Part 1
+Vault Authentication & Policies (Easy Explanation)
+🔐 Authentication in Vault
+Authentication means proving who you are.
+Vault can authenticate users and applications in many ways, such as:
+
+Token
+Username & Password
+LDAP
+Okta
+JWT / OIDC
+RADIUS
+GitHub
+
+👉 Before anyone can use Vault, they must authenticate using one of these methods.
+
+📜 Vault Policies (Easy Explanation)
+Vault policies decide what a user or app is allowed to do.
+
+They define the level of access
+Control actions like reading, writing, or managing secrets
+
+⭐ Pre‑defined Policies in Vault
+1️⃣ Root Policy
+
+Created automatically when Vault is initialized
+Gives full access to everything
+Used only by root tokens
+Helps set up auth methods, policies, and initial configuration
+
+⚠️ Very powerful — use carefully
+
+2️⃣ Default Policy
+
+Also created automatically
+Attached to every token
+Provides basic permissions
+
+✍️ Policy Writing Basics
+
+Policies are usually written in HCL format
+They are also called ACL (Access Control List) policies
+Vault is path‑based, meaning:
+
+Permissions are granted per path
+Example: secrets path, auth path, system path
+
+
+
+✅ An empty policy gives no permissions at all
+
+🧩 Policy Structure (Simple)
+Policies define:
+
+Path → where access applies
+Capabilities → what actions are allowed
+
+✅ Primary Capabilities
+
+Create – add new data
+Read – view data
+Update – change data
+Delete – remove data
+List – see available keys
+Sudo – special admin access
+Deny – block access completely
+
+🚫 Root‑Protected API Paths
+Some Vault paths are very sensitive and require:
+
+A root token, or
+sudo capability in the policy
+
+Examples:
+
+auth/token
+auth/token/accessors
+sys/audit
+sys/rotate
+sys/seal
+
+
+* Vault Policies - Part 2
+ACL Rules for KV Version 2 (Easy Explanation)
+KV Version 2 basics
+
+KV v2 uses a different API structure than KV v1
+Paths are prefixed to show what action you are doing
+This is mainly because KV v2 supports multiple versions of secrets
+
+Writing and Reading Secrets
+✅ To write or read secret values, Vault uses:
+data/
+👉 Example use:
+Store a new secret
+Read the value of a secret
+
+Listing Secrets (Very Important)
+✅ To list secret keys, Vault uses:
+metadata/
+
+Key points:
+The path must be a folder, not a single secret
+You only get the names of keys
+❌ You do NOT get secret values
+This is similar to listing files in a folder.
+
+Summary of KV v2 Paths (Simple)
+🔹 Writing & Reading Secret Values
+
+Path: data/
+Used for storing and reading secret data
+
+🔹 Listing Keys
+
+Path: metadata/
+Capability needed: list
+Shows only key names, not values
+
+🔹 Reading Secret Metadata
+
+Path: metadata/
+Capability needed: read
+Shows version info, not secret values
+
+🔹 Destroy Specific Versions
+
+Path: destroy/
+Capability needed: update
+Permanently deletes selected versions
+
+🔹 Destroy All Versions & Metadata
+
+Path: metadata/
+Capability needed: destroy
+Removes everything for that key
+
+
+Easy way to remember
+
+data/ → actual secret values
+metadata/ → info about secrets
+destroy/ → permanent deletion
+
+
+* AppRole Auth Method
+Vault Basics (Easy Explanation)
+🔐 Authentication Basics
+Before using Vault, a client must authenticate.
+Vault supports different auth methods.
+Some are for human users (like username/password).
+Some are for machines or applications.
+
+After successful authentication, Vault gives a token.
+This token has policies attached, which define what access is allowed.
+
+AppRole Overview (Easy Explanation)
+AppRole is an authentication method mainly used for applications.
+You can create multiple roles.
+Each role represents an application.
+Each role has different permissions based on its policies.
+✅ Example:
+App A → read‑only secrets
+App B → read and write secrets
+Each app logs in using its role and receives a token with limited access. 
+
+*  Important Pointers
+- The AppRole auth method was specially designed to be used by machines and applications but uses similar authentication method that a human might use.
+- You can look at Role ID as a "username" and the Secret ID as a "password" allowing machines to authenticate to vault.
+
+
+HTTP API in Vault (Easy Explanation)
+🔗 Vault HTTP API
+Everything in Vault works through the HTTP API
+The CLI itself uses the HTTP API behind the scenes
+Some Vault features are only available through the API, not the CLI
+
+Authentication using curl
+You can use curl to talk directly to Vault
+Every request must include a client token
+The token is sent using this HTTP header:
+
+X-Vault-Token: <your-token>
+Without a token ❌ → Vault will not allow operations
+
+Vault HTTP API basics
+✅ All Vault API paths start with:
+/v1/
+
+✅ Vault uses JSON for:
+Request data
+Response data
+
+✅ Example:
+/v1/secret/foo
+
+This means:
+secret → secrets engine
+foo → secret key
+
+Listing data with the API
+You can list secrets in two ways:
+1️⃣ Use GET with:
+?list=true
+
+2️⃣ Use the LIST HTTP method
+Both do the same thing: show key names, not values.
+
+HTTP Verb → Capability Mapping (Simple)
+Create → POST / PUT
+Read → GET
+Update → POST / PUT
+Delete → DELETE
+List → LIST or GET ?list=true
+
+
+Vault Token Capabilities (Easy Explanation)
+Token capabilities tell you what a token is allowed to do on a specific Vault path.
+What does the token capabilities command do?
+It checks permissions (capabilities) like:
+read
+write
+delete
+list
+
+It answers the question:
+👉 “What can this token do on this path?”
+
+Two ways it works
+1️⃣ When you provide a token
+Vault uses the endpoint:
+/sys/capabilities
+
+It checks the capabilities of the given token
+Requires permission to inspect other tokens
+
+2️⃣ When you do NOT provide a token
+Vault uses the endpoint:
+/sys/capabilities-self
+
+It checks your own token’s capabilities
+Uses the token you are currently authenticated with
+✅ This is the most common and safest way
+
+Simple way to remember
+Token provided → check that token’s permissions
+No token provided → check my token’s permissions
+
+
+* Authentication for Multiple Users in Vault (Easy Explanation)
+Multiple authentication methods
+
+Vault supports many authentication methods
+You can even enable the same auth method multiple times on different paths
+A single user or app may log in using different identity providers
+(for example: LDAP, GitHub, userpass)
+
+Entity and Alias (Very Important Concept)
+✅ Entity
+An entity represents a real user or application in Vault
+Example: an entity named Bob
+
+✅ Alias
+An alias represents one account from an auth method
+Example:
+Bob via LDAP
+Bob via GitHub
+
+👉 All these aliases are linked to the same entity (Bob)
+So even though Bob logs in using different methods, Vault knows it’s the same person.
+
+Policies at the Entity Level
+Policies can be attached directly to an entity
+All aliases (accounts) under that entity inherit those policies
+✅ Result:
+Bob logs in via LDAP → same access
+Bob logs in via GitHub → same access
+No need to manage policies separately.
+
+Identity Secrets Engine (Easy Explanation)
+The Identity secrets engine keeps track of all Vault clients
+In Vault terms:
+Each client = Entity
+Each entity can have multiple aliases
+
+✅ Key points:
+Enabled by default
+Cannot be disabled
+Cannot be moved
+Provides a central identity system for Vault
+
+Simple way to remember
+Auth method → how you log in
+Alias → one login account
+Entity → real person or app
+Policy on entity → same access everywhere
+
+
+* Identity Groups in Vault (Easy Explanation)
+✅ What is a group?
+A group can contain multiple entities (users or apps)
+Policies applied to a group automatically apply to all members
+👉 This makes access management easier.
+
+Internal vs External Groups
+✅ Internal Groups
+Created inside Vault by default
+Managed fully within Vault
+
+✅ External Groups
+Come from external identity providers
+Example: Active Directory, LDAP
+
+Vault links to these external groups through auth methods
+Policies are attached to the group once in Vault
+👉 Users inherit policies based on their external group membership
+
+Tools in Vault (Easy Explanation)
+Vault includes built‑in tools to perform common tasks.
+These tools are available under:
+/sys/tools
+
+Important Tool Endpoints
+✅ Generate random data
+/sys/tools/random/164
+
+Generates 164 bytes of random data
+✅ Hash data
+/sys/tools/hash/sha2-512
+Creates a SHA‑2 hash of input data
+
+Vault Auto‑Complete (Easy Explanation)
+Vault supports auto‑completion in the CLI.
+
+Automatically completes:
+Commands
+Subcommands
+Flags
+Arguments
+
+✅ Helps avoid typing mistakes
+✅ Makes working with Vault faster and easier
+
+
+* Path Templating (Easy Explanation)
+Path templating lets you use variables in Vault policies.
+
+These variables are filled automatically using entity information
+This helps create dynamic policies instead of hard‑coding paths
+✅ Example idea (no syntax needed):
+Each user/app only accesses its own secrets
+Vault replaces the variable with the entity name or ID
+👉 Useful for multi‑user or multi‑app environments
+
+
+* Vault Policies for Transit Engine (Easy Explanation)
+The Transit Engine is used for encryption and decryption.
+To allow an app or user to use Transit, you must add two main policy rules:
+1️⃣ Permission to encrypt data
+2️⃣ Permission to decrypt data
+Without these permissions:
+Vault will reject encryption or decryption requests
+✅ These permissions are given on the Transit key path
+
+Simple way to remember
+Path templating → policies adapt automatically per user/app
+Transit policies → must allow encrypt and decrypt actions
+
+
+* Vault Tokens (Easy Explanation)
+🔑 What are Vault tokens?
+Tokens are the main way to authenticate in Vault
+Every request to Vault must include a token
+In dev mode, you use the root token
+The token auth method is special:
+It is the first auth method
+It cannot be disabled
+
+🪪 Mapping Tokens to Policies
+Each token contains information
+The most important information is:
+✅ One or more policies
+Policies decide what the token can do in Vault
+
+🔍 Lookup Token Information
+You can see details of a token using:
+vault token lookup
+This shows:
+Policies
+TTL
+Whether the token can be renewed
+Parent token info
+
+💾 Token Helper (CLI Convenience)
+Vault CLI automatically stores your token after login
+This is done using a token helper
+Default location:
+~/.vault-token
+
+✅ To “log out”:
+Simply delete this file
+
+⏳ Token TTL (Time To Live)
+TTL means how long a token is valid
+All non‑root tokens have TTL
+When TTL expires:
+Token stops working
+All secrets created by it are revoked
+
+✅ Root tokens:
+Do NOT expire
+
+⏱️ Creating Tokens with TTL
+You can create a token with a custom TTL
+Example use:
+Short‑lived tokens for apps or automation
+
+🔄 Renewing Tokens
+Renewable tokens can have their TTL extended
+Use:
+vault token renew
+
+⚠️ Tokens cannot be renewed past their max TTL
+🌳 Service Token Lifecycle (Parent–Child)
+Tokens can create child tokens
+These child tokens:
+Belong to the parent
+May have their own TTL
+
+Important rule ⚠️
+If the parent token is revoked or expires, all child tokens are revoked too
+
+🧪 Example Token Hierarchy (With TTL)
+Token 1
+TTL: 1 hour
+
+Token 2
+Created by Token 1
+
+✅ If Token 1:
+Is not renewed
+Or expires
+
+❌ Then:
+Token 1 is revoked
+Token 2 is automatically revoked
+Even if Token 2 still had time left
+
+
+* Vault Token Accessories (Easy Explanation)
+🔑 Token Accessor
+When Vault creates a token, it also creates a token accessor
+The accessor is a safe reference to the token (not the token itself)
+
+✅ What you can do with an accessor:
+View token details (not the token value)
+Check what the token can do (capabilities)
+Renew the token
+Revoke the token
+👉 Accessors are safer to share than real tokens.
+
+* Orphan Tokens (Easy Explanation)
+Normally, tokens are created as children of another token
+Orphan tokens have no parent
+They do not expire when another token expires
+✅ Key points:
+Orphan tokens are the root of their own token tree
+They still expire when their own TTL is reached
+
+
+* Cubbyhole Secrets Engine (Easy Explanation)
+What is Cubbyhole?
+Cubbyhole is a private storage space for a token
+✅ Enabled by default
+❌ Cannot be disabled, moved, or duplicated
+
+Important rules:
+Each token has its own cubbyhole
+❌ No token can access another token’s cubbyhole
+❌ Even the root user cannot read another cubbyhole
+When the token expires → its cubbyhole is deleted
+👉 Used for short‑lived, sensitive data.
+
+
+* Response Wrapping (Easy Explanation)
+How it works:
+Vault puts the response into a temporary single‑use token
+This wrapping token stores data in its cubbyhole
+The token has a short TTL
+✅ Benefits:
+Only the intended client can unwrap the secret
+If an attacker unwraps it first:
+The real app fails to unwrap
+You know something went wrong
+You can revoke access immediately
+
+
+* Batch Tokens (Easy Explanation)
+Batch tokens are lightweight and fast
+They do not require storage on disk
+Very scalable for:
+CI/CD
+Short‑lived jobs
+⚠️ Limitations:
+Less flexible than service tokens
+No renewal
+No individual revocation
+
+
+* Token TTL (Time To Live) Basics
+Every non‑root token has a TTL
+TTL = how long the token is valid
+After TTL ends:
+Token stops working
+All related leases are revoked
+✅ Root tokens do not expire
+
+*TTL Depends On (3 Things)
+A token’s TTL is limited by the lowest value of:
+1️⃣ System max TTL
+Default: 32 days
+Configurable
+2️⃣ Mount max TTL
+Set on auth or secrets engine
+3️⃣ Auth method TTL
+Suggested by the auth method that issued the token
+
+* Periodic Tokens (Easy Explanation)
+Periodic tokens never expire
+They must be renewed regularly
+If not renewed → they expire
+✅ Outside of root tokens:
+This is the only way to have unlimited lifetime tokens
+
+
+* Vault for Production (Easy Explanation)
+So far, Vault was running in dev mode, where:
+Data is stored in memory
+Everything is lost when Vault stops
+This is not suitable for production.
+For production, Vault must use persistent storage so data is safe.
+Storage in Production
+Vault can store data using different storage backends, such as:
+Filesystem
+S3
+Consul
+Databases: MySQL, DynamoDB, PostgreSQL
+These keep data even after Vault restarts.
+
+Steps to Run Vault in Production
+✅ Step 1: Create a configuration file
+Outside dev mode, Vault uses a config file
+File format can be:
+HCL (most common)
+JSON
+This file defines storage, listener, security settings, etc.
+
+✅ Step 2: Start Vault using the config file
+Start Vault and point it to the config file
+Vault now runs with persistent storage and production settings
+
+✅ Step 3: Initialize Vault (one-time only)
+Done only once for a new storage backend
+During initialization:
+Encryption keys are generated
+Unseal keys are created
+Initial root token is created
+⚠️ This step is required before Vault can be used.
+
+✅ Step 4: Unseal Vault
+After initialization, Vault starts in a sealed state
+Vault can see the storage but cannot read it
+Unsealing tells Vault how to decrypt its data
+Unseal keys are used to unlock Vault
+✅ Once unsealed, Vault is ready to use.
+
+Simple way to remember
+Dev mode → memory only, for learning
+Production → persistent storage
+Config file → how Vault is set up
+Initialize → create keys and root token
+Unseal → unlock Vault to read data
+
+* important pointers - initialization state
+- initialize outputs two incredibly important pieces of information: the unseal keys and the initial root token.
+- this is the only time ever that all this data is known by vault, and also the only time that the unseal keys should ever be so close together
+
+-----------------------------------------------------------------------
+* Vault Agent (Easy Explanation)
+🔹 The problem applications face
+When an application uses Vault, it must:
+Authenticate first
+Use a token for requests
+Renew the token before it expires
+Building all this logic inside every application is complex.
+✅ Vault Agent solves this problem.
+
+🔹 What is Vault Agent?
+Vault Agent is a helper process (client daemon) that runs alongside your application.
+It:
+Automatically logs in to Vault
+Keeps the token renewed
+Re‑authenticates if needed
+Is built to handle failures safely
+👉 Your application does not need to manage tokens anymore.
+
+🔹 Running Vault Agent
+Vault Agent is started using the Vault binary:
+vault agent -config=<config-file>
+The config file defines:
+Which auth method to use
+Where to store the token (called a sink)
+
+🔹 How Vault Agent works
+1️⃣ Agent starts
+2️⃣ Authenticates to Vault using configured auth method
+3️⃣ Gets a token
+4️⃣ Writes the token to the configured sink
+5️⃣ Keeps the token renewed automatically
+6️⃣ If token changes → writes new token again
+✅ App simply reads the token from the sink
+
+🔹 Main features of Vault Agent
+1️⃣ Auto‑Auth
+Automatically logs in
+Automatically renews tokens
+Re‑authenticates if renewal is not possible
+
+2️⃣ Caching
+Caches Vault responses locally
+Stores:
+Newly created tokens
+Leased secrets created using those tokens
+
+✅ Reduces load on Vault
+✅ Improves performance
+
+
+* Shamir Secret Sharing (Easy Explanation)
+Why it is needed
+Vault storage is not trusted
+All data is encrypted
+Vault uses an encryption key
+That key is protected by a master key
+
+How Shamir’s algorithm works
+Vault splits the master key into pieces (shares)
+Example:
+5 key shares created
+Any 3 shares are required to unlock Vault
+✅ No single person has full control
+
+Important points
+You can configure:
+Number of shares
+Minimum shares needed
+
+Shamir can be disabled
+Vault can use the master key directly
+Once Vault rebuilds the master key:
+➡️ It decrypts the encryption key
+➡️ Vault becomes unsealed
+
+🔹 Seal Stanza (Easy Explanation)
+The seal stanza controls how Vault protects the master key
+Used with:
+HSM
+Cloud KMS (AWS KMS, Azure Key Vault, GCP KMS)
+
+✅ Optional configuration
+✅ If not used, Vault defaults to Shamir secret sharing
+
+
+* Auto‑Unseal (Easy Explanation)
+🔐 The problem with manual unsealing
+Normally, to unseal Vault, people must:
+Hold pieces of the unseal key
+Manually enter them after Vault starts
+This creates problems:
+1️⃣ If you have many Vault clusters, unsealing becomes slow and hard
+2️⃣ Automation tools can install Vault, but cannot manually unseal it
+
+✅ What is Auto‑Unseal?
+Auto‑unseal removes the need for people to enter keys.
+Vault uses a trusted external service
+At startup, Vault asks this service to:
+Decrypt the master key
+Automatically unseal Vault
+✅ No manual steps
+✅ Easy automation
+✅ Better availability
+
+🔧 Auto‑Unseal Options
+Vault supports several services for auto‑unseal:
+AWS KMS
+Azure Key Vault
+GCP Cloud KMS
+Transit Secrets Engine
+HSM
+
+* Vault Plugin Mechanism (Easy Explanation)
+Many Vault features are built as plugins
+Auth methods, secrets engines, and others are all plugins
+Plugins work like building blocks (Legos)
+
+Using a third‑party plugin:
+1️⃣ Create the plugin
+2️⃣ Compile it
+3️⃣ Start Vault with the plugin directory path
+
+* Audit Devices (Easy Explanation)
+What are audit devices?
+Audit devices log every Vault request and response
+Because Vault works via API:
+Audit logs record all authenticated actions, including errors
+Enabling auditing
+Auditing is disabled by default
+A root user must enable it using:
+vault audit enable
+
+Important audit rules ⚠️
+At least one audit device must successfully write logs
+If only one audit device exists and it fails → Vault stops responding
+With multiple audit devices → Vault works if any one succeeds
+
+* Vault Enterprise (Easy Overview)
+Vault Enterprise includes extra features such as:
+Disaster recovery
+Namespaces
+Monitoring
+Multi‑factor authentication
+Auto‑unseal with HSM
+
+* Namespaces (Easy Explanation)
+The problem
+Different teams want to use Vault independently:
+SysOps
+Security
+App teams
+
+The solution: Namespaces
+Namespaces let you create separate Vault areas.
+Each namespace can have its own:
+Policies
+Auth methods
+Secrets engines
+Tokens
+Entities and groups
+✅ Teams manage their own secrets safely
+Vault Replication (Easy Explanation)
+Why replication?
+A single Vault cluster can face:
+High latency
+Network issues
+Downtime
+Performance Replication
+Secondary clusters handle requests
+Share config and secrets
+Keep their own tokens and leases
+
+* Disaster Recovery Replication
+Secondary cluster does not serve clients
+Used only for recovery
+Can be promoted if primary fails
+
+* Monitoring & Telemetry (Easy Explanation)
+What is telemetry?
+Telemetry collects metrics and data
+Helps understand Vault health and usage
+What to monitor:
+1️⃣ Vault metrics
+2️⃣ Vault audit logs
+
+* Vault High Availability (Easy Explanation)
+Running a single Vault server is risky
+Vault supports multiple servers (HA mode)
+
+* How HA works:
+One node becomes active
+Others are standby
+Standby nodes forward requests if needed
+✅ If active node fails → another takes over
+✅ operator step-down can force active node to step down
+
+* Raft Storage – Snapshot & Restore (Easy Explanation)
+Vault supports backups using Raft snapshots.
+Useful Commands:
+✅ Take snapshot:
+vault operator raft snapshot save demo.snap
+
+✅ Restore snapshot:
+vault operator raft snapshot restore demo.snap
+
+✅ Helps with backup and disaster recovery
