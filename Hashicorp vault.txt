@@ -1,0 +1,867 @@
+* Hashicorp vault:
+
+It is secrets lifecycle manager those secrets could be static and stored directly on vault or they could be dynamic and simple managed by vault
+
+Vault is written in Go (Golang), a programming language made by Google.
+Because of this, Vault can be compiled for different operating systems like Windows, Linux, and macOS.
+Each operating system gets its own binary file.
+This single binary includes both parts:
+
+Client part – talks to the Vault server
+Server part – actually runs the Vault service
+
+So, the same compiled file can be used to run Vault as a server or use it as a client, depending on how you start it.
+
+
+* Vault concept
+Vault is used for authentication and security.
+It runs in the background as a server and controls who can access what.
+✅ Authentication
+Vault has authentication methods to verify users or systems.
+
+Internal example: userpass (username & password)
+External example: LDAP, GitHub, AWS, etc.
+
+✅ Policies
+After login, Vault assigns policies.
+
+Policies decide what actions you are allowed to do
+Example: read secrets, write secrets, or deny access
+
+✅ Secrets Engines (Plugins)
+Once authenticated and allowed by policies:
+
+You can access secrets
+Secrets are provided by Secrets Engines (also called plugins)
+Examples: database passwords, API keys, certificates
+
+* Who is accessing vault?
+Vault can be accessed by different types of clients:
+✅ A human user (using UI or CLI)
+✅ An application (using Vault API in code)
+✅ A virtual machine or physical server
+✅ Any process that needs secrets securely
+Even though they are different, all of them talk to Vault in the same way.
+
+How do they talk to Vault?
+👉 Through the Vault API
+The API is the only way to interact with Vault:
+
+Authentication
+Policies
+Secrets
+Everything inside Vault
+
+Whether you use:
+
+UI
+CLI
+Application code
+
+👉 it all goes through the same API.
+
+Token concept (very important)
+After you authenticate, Vault gives you a token.
+🔑 This token:
+
+Proves who you are
+Carries your permissions (policies)
+
+📌 For every request you send to Vault, the token is included.
+So:
+
+UI uses the token
+CLI uses the token
+API calls use the token
+
+
+* Run vault in dev mode
+Vault can run:
+
+On a server
+Or on your local computer
+
+Vault is a single binary file that includes:
+✅ Server features
+✅ Client (CLI) features
+
+Steps to run Vault in Dev Mode
+1️⃣ Download Vault
+
+Download the Vault binary that matches your operating system (Windows, Linux, macOS)
+
+2️⃣ Start Vault in Dev Mode
+
+Run a simple command to start Vault in dev mode
+Dev mode is used for learning and testing
+Vault starts quickly with default settings
+
+3️⃣ Access Vault
+Once Vault is running, you can interact with it using:
+
+CLI (command line)
+UI (web browser)
+API (for applications)
+
+All three ways talk to the same Vault server.
+
+Simple Flow
+Download Vault → Start Vault in dev mode → Use CLI, UI, or API
+
+
+* Installation process for the vault binary
+on CLI
+windows --> use Chocolatey -- which is a sort of package manager for windows
+Mac --> use Homebrew
+Linux --> use your package manager
+
+
+* Development Mode
+When you run Vault in dev mode, it is made only for learning and testing.
+What happens in dev mode?
+✅ Runs on your local machine
+
+Uses localhost (loopback address)
+Only accessible from your computer
+
+✅ No SSL / No HTTPS
+
+Uses HTTP, not HTTPS
+No certificates are created
+Not secure (fine for learning, not for production)
+
+✅ In‑memory storage
+
+Secrets are stored only in memory
+If Vault stops → all secrets are lost
+Production Vault uses persistent storage so data is not lost
+
+✅ Already initialized and unsealed
+
+No setup needed
+Vault is ready to use immediately
+
+✅ UI is enabled by default
+
+You can open Vault in a web browser
+In production, UI must be enabled manually
+
+✅ Secrets engine already enabled
+
+A Key/Value (KV) secrets engine is ready
+Lets you start storing secrets right away
+
+
+* launch vault in dev mode
+vault server -dev
+
+* store vault server address in environment variable
+Linux/macOS --> export VAULT_ADDR=http://127.0.0.1:8200
+windows powershell --> $env:VAULT_ADDR="http://127.0.0.1:8200"
+
+* Log into vault
+vault login
+
+* Basic vault command structure
+vault <command> <subcommand> [options] [ARGUMENTS]
+
+* Getting help with vault
+vault <command> -help
+vault path-help PATH
+
+
+* Environment variables
+When the Vault binary runs, it checks for some environment variables.
+These variables all start with VAULT_ and help Vault know how to connect and behave.
+Commonly used Vault environment variables:
+
+✅ VAULT_ADDR
+Tells Vault where the Vault server is running
+Must include the full address
+Example:
+
+http://localhost:8200
+https://vault.example.com
+
+✅ VAULT_TOKEN
+Stores the authentication token
+Used to send requests to Vault without logging in each time
+If this is set, it overrides any token saved elsewhere
+
+✅ VAULT_SKIP_VERIFY
+Tells Vault not to verify SSL certificates
+Often used in dev or test environments
+Not safe for production
+
+✅ VAULT_FORMAT
+Controls how Vault shows output
+Example formats: json, table, etc.
+
+
+* Authentication Methods
+Vault has many authentication methods, and they are all provided by plugins that come bundled inside the Vault binary.
+
+Types of authentication methods
+✅ External authentication methods
+These connect Vault to outside systems:
+LDAP / Active Directory (company users)
+GitHub (organization and teams)
+AWS IAM or other cloud services
+
+✅ Internal authentication methods
+These are built into Vault itself:
+Userpass (username & password)
+AppRole (used by applications)
+
+Token is the key 🔑
+Every authentication method returns a token
+The token auth method:
+Is enabled by default
+Cannot be disabled
+
+The token is what you actually use to:
+Access secrets
+Perform actions in Vault
+
+Auth method paths
+All auth methods are mounted under: /auth
+
+Example:
+/auth/userpass
+/auth/ldap
+/auth/approle
+
+Main idea (very important)
+👉 The purpose of all authentication methods is the same:
+Get a token, then use that token to work with Vault
+
+
+* Authentication Method categories
+Vault supports two main types of authentication sources:
+External and Internal.
+
+1️⃣ External Authentication Sources
+These use systems outside of Vault to verify identity.
+✅ Cloud providers
+AWS
+Azure
+GCP
+Other public cloud platforms
+Vault has built‑in plugins to work with them.
+
+✅ Cloud‑native platforms
+Kubernetes
+Cloud Foundry
+GitHub
+JWT (JSON Web Token)
+
+✅ Traditional systems
+LDAP
+Radius
+Kerberos
+
+These are commonly used in companies for user authentication.
+
+2️⃣ Internal Authentication Sources
+These are built directly into Vault.
+✅ Vault‑native methods
+Token (default and always enabled)
+Userpass (username & password)
+AppRole (commonly used by applications)
+
+Key takeaway 🔑
+No matter which method you use (external or internal):
+👉 Every authentication method gives you a token
+👉 That token is used to access Vault
+
+
+* Authentication Methods Usage
+Enabling an auth method
+All auth methods are managed under /sys/auth
+When you enable an auth method, it is mounted on a path
+
+✅ Default path
+If you don’t specify a path, Vault uses the method name
+Example:
+Enable userpass → path becomes /auth/userpass
+
+Changing an auth method path
+❌ Auth methods cannot be moved after enabling
+✅ To change the path:
+You must disable the method
+Then enable it again on a new path
+
+⚠️ Important:
+Disabling a method deletes all data related to it So this is more like delete and re‑add, not move
+
+Tuning vs Configuration (Important Difference)
+✅ Tuning
+Common settings shared by all auth methods
+Example: token lifespan, max TTL
+Same tuning options work for userpass, AWS, etc.
+
+✅ Configuration
+Settings specific to one auth method
+Example:
+AWS auth → AWS roles and IAM rules
+Userpass → usernames and passwords
+
+*List existing auth methods
+vault auth list
+
+* Enable an auth method
+vault auth enable [options] TYPE
+vault auth enable -path=globopass userpass
+
+* Tune an auth method
+vault auth tune [options] PATH
+vault auth tune -description="First userpass" globopass/
+
+* Disable an auth method
+vault auth disable [options] PATH
+vault auth disable globopass/
+
+* login using a token
+vault login
+
+login with an auth method
+vault login [options] [AUTH K=V_]
+vault login -method=userpass username=ned
+
+* write with an auth method
+vault write [options] PATH [DATA K=V-]
+vault write auth/userpass/login/ned password=globomantics
+
+
+* Configuring vault policies
+What is a Vault policy?
+A Vault policy defines what actions are allowed in Vault
+It controls who can read, write, or manage things
+In the Vault UI, policies are also called ACLs (Access Control Lists)
+
+How policies are assigned
+Policies can be attached in different ways:
+To a token
+Through identity (users or groups)
+Via an auth method (user, group, or role inside LDAP, AWS, AppRole, etc.)
+Through some secret engines
+👉 If multiple policies apply, the most specific rule wins
+
+Policy rules behavior
+✅ No versioning
+Policies do not keep old versions
+When you change a policy, the old one is replaced
+
+Default policy
+Created automatically when Vault starts
+It cannot be deleted
+It can be edited
+Gives very basic permissions
+
+Root policy (Very important ⚠️)
+Automatically attached to root tokens
+Can also be assigned to other tokens
+Has full access to everything in Vault
+Cannot be changed
+Cannot be deleted
+Because it has full control, it must be used very carefully.
+
+* Allow tokens to look up their own properties
+path "auth/token/lookup-self" {...
+
+* Allow tokens to renew themselves
+path "auth/token/renew-self" {...
+
+* Allow tokens to revoke themselves
+path "auth/token/revoke-self" {...
+
+* Allow a token to look up its own capabilities on a path
+path "sys/capabilities-self" {...
+
+* Allow a token to look up its own entity by id or name
+path "identity/entity/id/{{identity.entity.id}}" {...
+
+
+* Policy syntax
+Vault policies are written in two formats:
+HCL (HashiCorp Configuration Language) ✅ recommended
+JSON
+HCL is preferred because it is easier to read and understand for humans.
+
+Basic parts of a Vault policy
+Each policy rule has two main elements:
+1️⃣ Path
+Tells Vault where the rule applies
+Example: a secrets path, auth path, etc.
+👉 “Where in Vault does this permission apply?”
+
+2️⃣ Capabilities
+Tells Vault what actions are allowed at that path
+Examples of actions:
+read
+create
+update
+delete
+list
+👉 “What can you do at this path?”
+
+* Basic path expression
+In a Vault policy, a path tells Vault where the permissions apply.
+Example: path "somepath/in/vault"
+
+Wildcards in paths
+Vault provides two wildcards to match paths dynamically.
+1️⃣ Glob (*)
+Written as: *
+Placed at the end of a path
+Matches anything after that path
+✅ Example: path "secret/data/*"
+➡️ Matches:
+secret/data/app
+secret/data/app/db
+secret/data/user/password
+
+2️⃣ Segment match (+)
+Written as: +
+Used inside the path
+Matches any single path segment
+✅ Example: path "secret/data/+/config"
+➡️ Matches:
+secret/data/app/config
+secret/data/db/config
+❌ Does NOT match: secret/data/app/db/config (too many segments)
+
+
+* Capabilities
+Capabilities define what actions are allowed on a specific Vault path.
+They mostly follow CRUD, which means basic data actions.
+Basic CRUD capabilities
+✅ Create
+Create a new key
+Example: add a new secret
+✅ Read
+Read data from a key
+Example: view a password
+✅ Update
+Change existing data
+Example: update a password
+✅ Delete
+Remove a key completely
+Example: delete a secret
+
+Additional important capabilities
+✅ List
+Lets you see what keys exist at a path
+❌ Does NOT show the secret values
+❌ Not automatically included with read
+✅ Sudo
+Special high‑level permission
+Used for root‑protected paths
+❌ Does NOT allow read/write by itself
+✅ Deny ⚠️
+Completely blocks access
+Overrides all other permissions
+Denies the entire path
+
+* Allow read access to an apikey
+path "secrets/globo/webapp/apikey" {
+	capabilities = ["read"]
+}
+
+* Allow read and list access to webapp path
+path "secrets/globo/webapp/*" {
+	capabilities = ["read", "list"]
+}
+
+* Allow full access to apikey in globo paths
+path "secrets/globo/+/apikey" {
+	capabilities = ["create", "read", "update", "delete"]
+}
+
+* deny access to the globo privileged path
+path "secrets/globo/webapp/*" {
+	capabilities = ["create", "read", "list", "update", "delete"]
+}
+
+path "secrets/globo/webapp/privileged" {
+	capabilities = ["deny"]
+}
+
+
+* Policy Assignment
+Vault policies decide what you are allowed to do.
+You can assign these policies to a token in three common ways.
+1️⃣ Assign policy when creating a token
+You create a token manually
+You attach policies at the same time
+✅ Example use case:
+Admin creates a token for a user or script with specific permissions
+
+2️⃣ Assign policy through an authentication method
+Policies are linked to an auth method
+The policy is tied to an identity inside that auth method
+User
+Role
+Group
+✅ When someone logs in using that auth method:
+Vault automatically gives the token the matching policies
+✅ Example:
+LDAP user → gets LDAP policy
+AppRole → gets AppRole policy
+
+3️⃣ Assign policy using the Identity system
+Policies are attached to an entity (a user or app identity)
+Policies can also come from group memberships
+✅ When a token is created for that entity:
+It receives policies from:
+The entity itself
+Any groups the entity belongs to
+
+* List existing policies
+vault policy list
+
+* Read the contents of a policy
+vault policy read [options] NAME
+vault policy read secrets-mgmt.
+
+* Write a new policy or update an existing policy
+vault policy write [options] NAME PATH | <stdin>
+vault policy write secrets-mgmt secrets-mgmt.hcl
+
+* Delete a policy
+vault policy delete [options] NAME
+vault policy delete secrets-mgmt
+
+*Format a policy per HCL guidelines
+vault policy fmt [options] PATH
+vault policy fmt secrets-mgmt.hcl
+
+* Associate directly with a token
+vault token create -policy="secrets-mgmt"
+
+* Assign to a user in userpass
+vault write auth/userpass/users/ned token_policies="secrets-mgmt"
+
+* Assign to an entity in identity
+vault write identity/entity/name/ned policies="secrets-mgmt"
+
+
+* Key Takeaways
+- Policies are associated with tokens directly or indirectly, defining the actions allowed by the token
+- The root policy can do anything. It cannot be modified or deleted
+- The default policy is assigned to new tokens by default. It can be modified, but not deleted
+- Paths define where actions can be taken; capabilities define what actions can be taken
+- Policies can be assigned directly to a token, through an auth method, or through the identity secrets engine
+
+
+* Vault Token Overview
+A token is like a key or pass that lets you access Vault.
+When you start a brand‑new Vault server, the first thing Vault creates is a root token.
+⚠️ Without this root token, you cannot access Vault at all.
+
+What do tokens do?
+Tokens carry identity and permissions
+They are used for every request to Vault
+They control what you can and cannot do
+
+How are tokens created?
+There are three main ways tokens are created:
+1️⃣ Authentication Method
+Most common way
+User or app logs in using:
+Userpass
+LDAP
+AppRole
+Cloud auth (AWS, Kubernetes, etc.)
+Vault verifies identity and returns a token
+
+2️⃣ Parent Token
+A token can create child tokens
+Child tokens inherit permissions (or a subset)
+Used by apps and automation
+
+3️⃣ Root Token
+Created when Vault is initialized
+Has full access
+Can also create other tokens
+
+
+* Root Token
+What is a root token?
+A root token has full access
+It can do anything in Vault
+It is very powerful ⚠️
+
+Root token properties
+✅ Never expires
+It does not automatically expire like normal tokens
+
+✅ Full control
+Can read, write, delete, configure—everything in Vault
+
+How is a root token created?
+A root token can be created in three ways:
+1️⃣ When you initialize the Vault server
+2️⃣ By using an existing root token
+3️⃣ By using a Vault operator command
+
+Important security rule
+⚠️ Revoke the root token as soon as possible
+Why?
+Because it has unlimited power
+Keeping it active is a security risk
+
+* Working with tokens
+* create a new token
+vault token create [options]
+vault token create -policy=my-policy --ttl=60m
+
+# View token properties
+vault token lookup [options] [ACCESSOR | ID]
+vault token lookup -accessor FJky-------
+
+* Check capabilities on a path
+vault token capabilities TOKEN PATH
+vault token capabilities s.TG9U-------- secrets/apikeys/
+
+
+* Token Types and Lifecycle
+1️⃣ Service Tokens
+Used by users and applications
+Have a lifecycle
+Can:
+Expire
+Be renewed
+Be revoked
+✅ Commonly used in production
+✅ Good for long‑running apps and users
+Example:
+An app uses a service token to regularly read secrets.
+
+2️⃣ Batch Tokens
+Used for one‑time or short‑lived tasks
+Do not have a lifecycle
+Cannot:
+Be renewed
+Be revoked individually
+Automatically disappear after use or time
+✅ Very lightweight
+✅ Good for jobs, scripts, or CI/CD pipelines
+Example:
+A script runs once, fetches a secret, and exits.
+
+Simple Comparison
+Service token → long‑running, renewable
+Batch token → short‑lived, one‑time use
+
+* Effective Max TTL
+TTL (Time To Live) means how long a token is valid.
+In Vault, the effective max TTL is decided by three limits, and Vault always uses the lowest value.
+1️⃣ System Max TTL
+The global limit set for the entire Vault system
+No token can live longer than this
+
+2️⃣ Mount Max TTL
+Set on a specific auth method or secrets engine
+Applies only to tokens created by that mount
+
+3️⃣ Auth Method Max TTL
+Set by the authentication method
+Limits how long tokens from that auth method can last
+
+How Vault decides the final TTL
+👉 Vault compares all three TTL values
+👉 The smallest TTL wins
+
+
+* Secrets Engine Overview
+Secrets engines are plugins in Vault that manage sensitive information like passwords, keys, and certificates.
+What do secrets engines do?
+Secrets engines handle data in three main ways:
+✅ Store
+Vault securely stores sensitive data
+Example: passwords, API keys
+
+✅ Generate
+Vault creates secrets automatically
+Example: database usernames and passwords
+
+✅ Encrypt
+Vault encrypts your existing data
+Example: encrypt/decrypt values without storing them
+
+* Secrets Engine Categories
+1️⃣ Cloud --> Manage cloud credentials
+Examples: AWS, Azure, GCP
+
+2️⃣ Database --> Generate and manage database credentials
+Examples: MySQL, PostgreSQL, MongoDB
+
+3️⃣ Internal --> Built‑into Vault
+Examples: Key/Value (KV) – store secrets
+Identity – manage users and groups
+Transit – encryption as a service
+
+4️⃣ Identity --> Integrate with identity systems
+Examples: Active Directory, OpenLDAP
+
+5️⃣ Certificate --> Manage certificates and keys
+Examples: SSH, PKI, Venafi
+
+* Identity Secrets Engine
+The Identity Engine in Vault is used to track and manage clients (users, apps, machines) that access Vault.
+Key points:
+✅ Enabled by default
+It is already running when Vault starts
+You don’t need to enable it manually
+
+✅ Cannot be disabled
+Vault always needs it to manage identities properly
+
+✅ Only one Identity Engine
+You cannot enable multiple identity engines
+Vault uses a single, central identity system
+
+
+What does it help with?
+Connects tokens to real identities
+Manages entities and groups
+Helps assign policies consistently
+
+* Cubbyhole Secrets Engine
+✅ Enabled by default
+❌ Cannot be disabled or moved
+📦 Created per service token
+🔒 Only accessible by the same token
+
+👉 Each token gets its own private storage.
+👉 No other token can see it — even admins.
+Use case: store temporary data during a session.
+
+* Static Secrets
+🔐 Store existing secrets securely
+🛠️ You manage the lifecycle manually
+📁 Uses the Key/Value (KV) engine
+Examples:
+Database password you already have
+API keys
+👉 Vault stores the secret, but does not rotate it automatically.
+
+* Dynamic Secrets
+⚙️ Generated on demand
+⏳ Each secret has a lease (expiry time)
+🔄 Automatic lifecycle management
+✅ Used by most secrets engines
+
+Example:
+Database credentials created when needed
+Automatically revoked after expiry
+✅ Consul engine is a good example of dynamic secrets.
+
+
+* Transit Engine
+The Transit Engine is used for encryption services.
+👉 Think of it as encryption as a service.
+
+Key points:
+✅ Does NOT store your data
+Vault only encrypts or decrypts data
+Your actual data stays outside Vault
+
+✅ Manages encryption keys
+Vault creates and protects the keys
+You never directly see the keys
+Supported actions:
+🔐 Encrypt / Decrypt
+Protect sensitive data
+✍️ Sign / Verify
+Check data integrity and authenticity
+
+🔢 Generate hashes
+Create secure hashes of data
+🎲 Create random bytes
+Generate secure random values
+
+Simple use case:
+An application sends data to Vault →
+Vault encrypts it →
+Application stores the encrypted value
+Vault never stores the actual data ✅
+
+
+* Enabling Secrets Engines Lifecycle
+A Secrets Engine in Vault goes through these steps:
+➡️ Enable → Tune → Configure → Move → Disable
+
+* Configuring Secrets Engines
+All engines are enabled on /sys/mounts
+Engines are enabled on a path
+	- Default to engine name
+Engines can be moved
+	- Revokes all existing leases
+	- May impact policies
+Engines can be tuned and configured
+	- Tuning settings are common for all engines
+
+
+* Using Secrets Engines
+How to use a Secrets Engine
+1️⃣ Authenticate first
+You must log in to Vault
+Your policy decides what you can access
+
+2️⃣ Access secrets
+You can use: CLI, UI, API
+
+3️⃣ Common commands
+Most secrets engines use:
+read → get secret
+write → create/update secret
+list → see secret names
+delete → remove secret
+
+✅ Key/Value (KV) engine
+Uses special vault kv commands
+KV version 1 can also use standard commands
+
+* Lease Overview
+A lease controls how long dynamic secrets and service tokens are valid.
+Vault issues a lease when a dynamic secret is created
+Lease includes metadata about the secret
+Leases can be:
+Renewed (extend time)
+Revoked (remove access)
+
+❌ No direct CLI command to see leases
+✅ Use this path instead:
+/sys/lease/lookup
+
+* Lease properties
+1️⃣ lease_id
+Unique ID for the lease
+
+2️⃣ lease_duration
+How long the secret is valid (TTL)
+Affected by:
+System TTL
+Mount TTL
+Object TTL
+Can be renewed, but not past max TTL
+
+3️⃣ lease_renewable
+Tells if the lease can be renewed or not
+
+* Working with Leases
+🔄 Renewal
+You can renew a lease
+Only works before max TTL is reached
+
+❌ Revocation
+Immediately cancels a secret
+Revoking a token also revokes its leases
+
+⚠️ Prefix Revocation
+Revokes many secrets at once
+Requires sudo permission
+Be very careful – it can impact many apps
+
